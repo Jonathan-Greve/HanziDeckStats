@@ -271,14 +271,9 @@ class HanziStatsDialog(QDialog):
 
         categories_to_show = self.config.get('categoriesToShow', [])
 
-        # HSK 2012
-        if any('HSK (2012)' in cat for cat in categories_to_show):
-            html += "<h4>HSK 2012</h4>"
-            html += self._generate_category_table(stats, 'hsk_2012')
-
-        # HSK 2021
-        if any('HSK (2021)' in cat or 'HSK (2020)' in cat for cat in categories_to_show):
-            html += "<h4>HSK 2021</h4>"
+        # HSK 2021 (3.0)
+        if any('HSK' in cat for cat in categories_to_show):
+            html += "<h4>HSK 3.0 (2021)</h4>"
             html += self._generate_category_table(stats, 'hsk_2021')
 
         # Frequency

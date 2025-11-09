@@ -12,13 +12,12 @@ class CharacterData:
     """Loads and manages character categorization data."""
 
     def __init__(self):
-        self.hsk_2021_map: Dict[str, int] = {}  # char -> level (1-9)
-        self.hsk_2012_map: Dict[str, int] = {}  # char -> level (1-6)
+        self.hsk_2021_map: Dict[str, int] = {}  # char -> level (1-7, where 7 = bands 7-9)
         self.frequency_rank_map: Dict[str, int] = {}  # char -> frequency rank
 
         # Load data
         self._load_hsk_2021()
-        self._load_frequency_and_hsk_2012()
+        self._load_frequency()
 
     def _get_data_path(self, filename: str) -> str:
         """Get path to data file in datasets directory."""
@@ -34,7 +33,17 @@ class CharacterData:
                 reader = csv.DictReader(f)
                 for row in reader:
                     char = row['Hanzi']
-                    level = int(row['Level'])
+                    level_str = row['Level']
+
+                    # Handle "7-9" for bands 7-9
+                    if level_str == "7-9":
+                        # Store as level 7 for simplicity (could also be 8 or 9)
+                        level = 7
+                    else:
+                        try:
+                            level = int(level_str)
+                        except ValueError:
+                            continue
 
                     # Store simplified character
                     self.hsk_2021_map[char] = level
@@ -48,8 +57,8 @@ class CharacterData:
         except Exception as e:
             print(f"Error loading HSK 2021 data: {e}")
 
-    def _load_frequency_and_hsk_2012(self):
-        """Load frequency and HSK 2012 data from mega_hanzi_compilation.csv"""
+    def _load_frequency(self):
+        """Load frequency data from mega_hanzi_compilation.csv"""
         csv_path = self._get_data_path('mega_hanzi_compilation.csv')
 
         try:
@@ -68,32 +77,14 @@ class CharacterData:
                             self.frequency_rank_map[simplified] = freq_rank
                         if traditional and traditional != simplified:
                             self.frequency_rank_map[traditional] = freq_rank
-
-                    # Parse HSK 2012 level (stored as "HSK_L1", "HSK_L2", etc in hsk30_level column)
-                    hsk_level_str = row.get('hsk30_level', '')
-                    if hsk_level_str and hsk_level_str.startswith('HSK_L'):
-                        try:
-                            level = int(hsk_level_str.replace('HSK_L', ''))
-                            # Only store levels 1-6 (HSK 2012)
-                            if 1 <= level <= 6:
-                                if simplified:
-                                    self.hsk_2012_map[simplified] = level
-                                if traditional and traditional != simplified:
-                                    self.hsk_2012_map[traditional] = level
-                        except ValueError:
-                            pass
         except FileNotFoundError:
             print(f"Warning: Frequency data file not found: {csv_path}")
         except Exception as e:
             print(f"Error loading frequency data: {e}")
 
     def get_hsk_2021_level(self, char: str) -> int:
-        """Get HSK 2021 level (1-9) for a character, or 0 if not in HSK."""
+        """Get HSK 2021 level (1-7, where 7=bands 7-9) for a character, or 0 if not in HSK."""
         return self.hsk_2021_map.get(char, 0)
-
-    def get_hsk_2012_level(self, char: str) -> int:
-        """Get HSK 2012 level (1-6) for a character, or 0 if not in HSK."""
-        return self.hsk_2012_map.get(char, 0)
 
     def get_frequency_rank(self, char: str) -> int:
         """Get frequency rank for a character, or 0 if not ranked."""
@@ -120,12 +111,19 @@ class CharacterData:
         Categorize a set of characters into HSK levels and frequency bands.
 
         Returns:
-            Dict with keys 'hsk_2012', 'hsk_2021', 'frequency', each containing
+            Dict with keys 'hsk_2021', 'frequency', each containing
             a dict mapping category names to sets of characters.
         """
         result = {
-            'hsk_2012': {f'Level {i}': set() for i in range(1, 7)},
-            'hsk_2021': {f'Band {i}': set() for i in range(1, 10)},
+            'hsk_2021': {
+                'Band 1': set(),
+                'Band 2': set(),
+                'Band 3': set(),
+                'Band 4': set(),
+                'Band 5': set(),
+                'Band 6': set(),
+                'Bands 7-9': set(),
+            },
             'frequency': {
                 'Top 500': set(),
                 'Top 1000': set(),
@@ -135,15 +133,13 @@ class CharacterData:
         }
 
         for char in characters:
-            # HSK 2012
-            hsk_2012_level = self.get_hsk_2012_level(char)
-            if hsk_2012_level > 0:
-                result['hsk_2012'][f'Level {hsk_2012_level}'].add(char)
-
             # HSK 2021
             hsk_2021_level = self.get_hsk_2021_level(char)
             if hsk_2021_level > 0:
-                result['hsk_2021'][f'Band {hsk_2021_level}'].add(char)
+                if hsk_2021_level >= 7:
+                    result['hsk_2021']['Bands 7-9'].add(char)
+                else:
+                    result['hsk_2021'][f'Band {hsk_2021_level}'].add(char)
 
             # Frequency
             freq_category = self.get_frequency_category(char)
