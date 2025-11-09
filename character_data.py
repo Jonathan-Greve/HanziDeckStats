@@ -70,13 +70,8 @@ class CharacterData:
                         except ValueError:
                             continue
 
-                    # Store simplified character
+                    # Store simplified character only
                     self.hsk_2021_map[char] = level
-
-                    # Also store traditional variant if different
-                    traditional = row.get('Traditional', '')
-                    if traditional and traditional != char:
-                        self.hsk_2021_map[traditional] = level
         except FileNotFoundError:
             print(f"Warning: HSK 2021 data file not found: {csv_path}")
         except Exception as e:
