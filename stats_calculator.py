@@ -167,15 +167,24 @@ class StatsCalculator:
 
         # Execute query and extract Hanzi
         try:
+            row_count = 0
             for row in self.col.db.execute(query, *params):
+                row_count += 1
                 fields_str = row[0]
                 # Split fields by field separator (\x1F)
                 fields = fields_str.split('\x1f')
                 # Extract Hanzi based on field mode
                 chars = HanziDetector.extract_from_fields(fields, field_mode)
                 hanzi_set.update(chars)
+
+            print(f"DEBUG: Processed {row_count} notes, found {len(hanzi_set)} unique Hanzi")
+            print(f"DEBUG: Field mode = {field_mode}")
+            if row_count > 0 and len(hanzi_set) > 0:
+                print(f"DEBUG: Sample Hanzi: {list(hanzi_set)[:10]}")
         except Exception as e:
             print(f"Error querying database: {e}")
+            import traceback
+            traceback.print_exc()
 
         return hanzi_set
 

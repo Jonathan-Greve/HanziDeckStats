@@ -53,27 +53,60 @@ class HanziStatsDialog(QDialog):
     def _create_controls(self) -> QWidget:
         """Create the control panel at the top of the dialog."""
         controls_widget = QWidget()
-        controls_layout = QHBoxLayout()
-        controls_layout.setContentsMargins(10, 10, 10, 10)
+        controls_widget.setStyleSheet("background-color: #f5f5f5;")
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(8)
+
+        # First row: Deck and Field selectors
+        row1 = QHBoxLayout()
 
         # Deck selector
-        controls_layout.addWidget(QLabel("Deck:"))
+        row1.addWidget(QLabel("Deck:"))
         self.deck_selector = QComboBox()
         self._populate_deck_selector()
-        controls_layout.addWidget(self.deck_selector, stretch=2)
+        row1.addWidget(self.deck_selector, stretch=2)
+
+        # Field selector
+        row1.addWidget(QLabel("Field:"))
+        self.field_selector = QComboBox()
+        self.field_selector.addItem("All Fields", "all")
+        self.field_selector.addItem("Sort Field Only", "sortField")
+        self.field_selector.addItem("Field 1", "1")
+        self.field_selector.addItem("Field 2", "2")
+        self.field_selector.addItem("Field 3", "3")
+        self.field_selector.addItem("Field 4", "4")
+        self.field_selector.addItem("Field 5", "5")
+        # Set default from config
+        default_field = self.config.get('fieldToUseForStats', 'all')
+        for i in range(self.field_selector.count()):
+            if self.field_selector.itemData(i) == default_field:
+                self.field_selector.setCurrentIndex(i)
+                break
+        row1.addWidget(self.field_selector, stretch=1)
+
+        main_layout.addLayout(row1)
+
+        # Second row: Checkbox and Refresh button
+        row2 = QHBoxLayout()
 
         # Include subdecks checkbox
         self.include_subdecks_cb = QCheckBox("Include subdecks")
         default_include = self.config.get('includeSubdecks', True)
         self.include_subdecks_cb.setChecked(default_include)
-        controls_layout.addWidget(self.include_subdecks_cb)
+        row2.addWidget(self.include_subdecks_cb)
+
+        row2.addStretch()
 
         # Refresh button
         refresh_btn = QPushButton("Refresh")
         refresh_btn.clicked.connect(self.refresh_stats)
-        controls_layout.addWidget(refresh_btn)
+        row2.addWidget(refresh_btn)
 
-        controls_widget.setLayout(controls_layout)
+        main_layout.addLayout(row2)
+
+        controls_widget.setLayout(main_layout)
         return controls_widget
 
     def _populate_deck_selector(self):
@@ -93,6 +126,11 @@ class HanziStatsDialog(QDialog):
             # Get selected deck
             deck_id = self.deck_selector.currentData()
             include_subdecks = self.include_subdecks_cb.isChecked()
+
+            # Get selected field and update config temporarily
+            selected_field = self.field_selector.currentData()
+            self.config['fieldToUseForStats'] = selected_field
+            self.calculator.config = self.config
 
             # Calculate stats
             if deck_id == 0:
