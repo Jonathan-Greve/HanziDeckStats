@@ -53,7 +53,36 @@ class HanziStatsDialog(QDialog):
     def _create_controls(self) -> QWidget:
         """Create the control panel at the top of the dialog."""
         controls_widget = QWidget()
-        controls_widget.setStyleSheet("background-color: #f5f5f5;")
+        controls_widget.setStyleSheet("""
+            QWidget {
+                background-color: #f5f5f5;
+            }
+            QLabel {
+                color: #333333;
+                font-weight: bold;
+            }
+            QComboBox {
+                background-color: white;
+                color: #333333;
+                border: 1px solid #cccccc;
+                padding: 4px;
+                border-radius: 3px;
+            }
+            QPushButton {
+                background-color: #1976d2;
+                color: white;
+                border: none;
+                padding: 6px 16px;
+                border-radius: 3px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1565c0;
+            }
+            QCheckBox {
+                color: #333333;
+            }
+        """)
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -69,15 +98,15 @@ class HanziStatsDialog(QDialog):
         row1.addWidget(self.deck_selector, stretch=2)
 
         # Field selector
-        row1.addWidget(QLabel("Field:"))
+        row1.addWidget(QLabel("Fields:"))
         self.field_selector = QComboBox()
         self.field_selector.addItem("All Fields", "all")
         self.field_selector.addItem("Sort Field Only", "sortField")
-        self.field_selector.addItem("Field 1", "1")
-        self.field_selector.addItem("Field 2", "2")
-        self.field_selector.addItem("Field 3", "3")
-        self.field_selector.addItem("Field 4", "4")
-        self.field_selector.addItem("Field 5", "5")
+        self.field_selector.addItem("1st Field", "1")
+        self.field_selector.addItem("2nd Field", "2")
+        self.field_selector.addItem("3rd Field", "3")
+        self.field_selector.addItem("4th Field", "4")
+        self.field_selector.addItem("5th Field", "5")
         # Set default from config
         default_field = self.config.get('fieldToUseForStats', 'all')
         for i in range(self.field_selector.count()):
@@ -245,21 +274,21 @@ class HanziStatsDialog(QDialog):
         # HSK 2012
         if any('HSK (2012)' in cat for cat in categories_to_show):
             html += "<h4>HSK 2012</h4>"
-            html += self._generate_category_table(stats, 'hsk_2012', 'Level')
+            html += self._generate_category_table(stats, 'hsk_2012')
 
         # HSK 2021
         if any('HSK (2021)' in cat or 'HSK (2020)' in cat for cat in categories_to_show):
             html += "<h4>HSK 2021</h4>"
-            html += self._generate_category_table(stats, 'hsk_2021', 'Band')
+            html += self._generate_category_table(stats, 'hsk_2021')
 
         # Frequency
         if any('Top' in cat for cat in categories_to_show):
             html += "<h4>Frequency</h4>"
-            html += self._generate_category_table(stats, 'frequency', '')
+            html += self._generate_category_table(stats, 'frequency')
 
         return html
 
-    def _generate_category_table(self, stats: DeckStatistics, category_type: str, prefix: str) -> str:
+    def _generate_category_table(self, stats: DeckStatistics, category_type: str) -> str:
         """Generate HTML table for a specific category type."""
         total_cat = stats.total_categorized.get(category_type, {})
         reviewed_cat = stats.reviewed_categorized.get(category_type, {})
@@ -284,10 +313,9 @@ class HanziStatsDialog(QDialog):
             pct = (reviewed_count / total_count * 100) if total_count > 0 else 0
 
             if total_count > 0:  # Only show categories with characters
-                display_name = f"{prefix} {category_name}" if prefix else category_name
                 html += f"""
                 <tr>
-                    <td>{display_name}</td>
+                    <td>{category_name}</td>
                     <td>{total_count}</td>
                     <td>{reviewed_count}</td>
                     <td>
