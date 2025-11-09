@@ -1,0 +1,26 @@
+{
+    "fieldToUseForStats": "sortField",
+    "includeSubdecks": true,
+    "showCategories": true,
+    "categoriesToShow": [
+        "HSK (2012) Level 1",
+        "HSK (2012) Level 2",
+        "HSK (2012) Level 3",
+        "HSK (2012) Level 4",
+        "HSK (2012) Level 5",
+        "HSK (2012) Level 6",
+        "HSK (2021) Band 1",
+        "HSK (2021) Band 2",
+        "HSK (2021) Band 3",
+        "HSK (2021) Band 4",
+        "HSK (2021) Band 5",
+        "HSK (2021) Band 6",
+        "HSK (2021) Band 7",
+        "HSK (2021) Band 8",
+        "HSK (2021) Band 9",
+        "Top 500",
+        "Top 1000",
+        "Top 1500",
+        "Top 2000"
+    ]
+}

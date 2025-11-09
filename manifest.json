@@ -1,0 +1,10 @@
+{
+    "name": "Hanzi Deck Statistics",
+    "package": "hanzi_deck_stats",
+    "author": "Jonathan",
+    "version": "1.0.0",
+    "ankiwebId": null,
+    "minAnkiVersion": "2.1.49",
+    "conflicts": [],
+    "homepage": ""
+}
