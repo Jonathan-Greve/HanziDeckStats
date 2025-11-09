@@ -338,9 +338,9 @@ class HanziStatsDialog(QDialog):
         mw.progress.start(label="Calculating Hanzi statistics...")
 
         try:
-            all_stats = []
+            # Collect all selected decks and their settings
+            selected_deck_configs = []
 
-            # Process each selected deck
             for deck_id, deck_info in self.deck_data.items():
                 if not deck_info['checkbox'].isChecked():
                     continue  # Skip unselected decks
@@ -361,22 +361,20 @@ class HanziStatsDialog(QDialog):
                     if subdeck_cb.isChecked():
                         selected_subdeck_ids.append(sub_id)
 
-                # Calculate stats with combined fields
-                stats = self._calculate_deck_stats_with_combined_fields(
-                    deck_id,
-                    deck_info['name'],
-                    selected_subdeck_ids,
-                    selected_fields
-                )
-                all_stats.append(stats)
+                selected_deck_configs.append({
+                    'deck_id': deck_id,
+                    'deck_name': deck_info['name'],
+                    'subdeck_ids': selected_subdeck_ids,
+                    'fields': selected_fields
+                })
 
             # Generate HTML
-            if len(all_stats) == 0:
+            if len(selected_deck_configs) == 0:
                 html = self._generate_no_selection_html()
-            elif len(all_stats) == 1:
-                html = self._generate_single_deck_html(all_stats[0])
             else:
-                html = self._generate_multi_deck_html(all_stats)
+                # Calculate combined stats for all selected decks
+                combined_stats = self._calculate_combined_stats(selected_deck_configs)
+                html = self._generate_single_deck_html(combined_stats)
 
             # Display HTML
             self.webview.stdHtml(html)
@@ -398,6 +396,51 @@ class HanziStatsDialog(QDialog):
 
         finally:
             mw.progress.finish()
+
+    def _calculate_combined_stats(self, deck_configs: List[Dict]):
+        """Calculate combined statistics from multiple decks."""
+        from .stats_calculator import DeckStatistics
+
+        # Build display name from all selected decks
+        deck_names = [config['deck_name'] for config in deck_configs]
+        if len(deck_names) == 1:
+            display_name = deck_names[0]
+        elif len(deck_names) == 2:
+            display_name = f"{deck_names[0]} + {deck_names[1]}"
+        else:
+            display_name = f"{deck_names[0]} + {len(deck_names) - 1} other decks"
+
+        stats = DeckStatistics(0, display_name)
+
+        # Combine hanzi from all selected decks and fields
+        total_hanzi_combined = set()
+        reviewed_hanzi_combined = set()
+
+        for config in deck_configs:
+            for field_value in config['fields']:
+                # Update config temporarily
+                self.config['fieldToUseForStats'] = field_value
+                self.calculator.config = self.config
+
+                # Get hanzi for this deck/field combination
+                field_total = self.calculator._get_hanzi_from_cards(
+                    config['subdeck_ids'], include_new=True, field_mode=field_value)
+                field_reviewed = self.calculator._get_hanzi_from_cards(
+                    config['subdeck_ids'], include_new=False, field_mode=field_value)
+
+                # Union with existing sets
+                total_hanzi_combined.update(field_total)
+                reviewed_hanzi_combined.update(field_reviewed)
+
+        stats.total_hanzi = total_hanzi_combined
+        stats.reviewed_hanzi = reviewed_hanzi_combined
+
+        # Categorize characters
+        if self.config.get('showCategories', True):
+            stats.total_categorized = self.calculator.character_data.categorize_characters(stats.total_hanzi)
+            stats.reviewed_categorized = self.calculator.character_data.categorize_characters(stats.reviewed_hanzi)
+
+        return stats
 
     def _calculate_deck_stats_with_combined_fields(self, deck_id: int, deck_name: str,
                                                      subdeck_ids: List[int], field_values: List[str]):
