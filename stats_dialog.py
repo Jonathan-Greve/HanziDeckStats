@@ -303,8 +303,8 @@ class HanziStatsDialog(QDialog):
         <table class="category-table">
             <tr>
                 <th>Category</th>
-                <th title="Total unique Hanzi in this category found in your deck">Total</th>
-                <th title="Hanzi you've reviewed at least once">Reviewed</th>
+                <th class="tooltip-header" data-tooltip="Total unique Hanzi in this category found in your deck">Total ℹ️</th>
+                <th class="tooltip-header" data-tooltip="Hanzi you've reviewed at least once">Reviewed ℹ️</th>
                 <th>Progress</th>
             </tr>
         """
@@ -392,10 +392,37 @@ class HanziStatsDialog(QDialog):
                     font-weight: 600;
                     color: #424242;
                     border-bottom: 2px solid #e0e0e0;
+                }
+                .tooltip-header {
+                    position: relative;
                     cursor: help;
                 }
-                th[title] {
-                    position: relative;
+                .tooltip-header:hover::after {
+                    content: attr(data-tooltip);
+                    position: absolute;
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background-color: #333;
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 4px;
+                    white-space: nowrap;
+                    font-size: 12px;
+                    font-weight: normal;
+                    z-index: 100;
+                    margin-bottom: 5px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                }
+                .tooltip-header:hover::before {
+                    content: '';
+                    position: absolute;
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border: 5px solid transparent;
+                    border-top-color: #333;
+                    z-index: 100;
                 }
                 td {
                     border-bottom: 1px solid #f0f0f0;
