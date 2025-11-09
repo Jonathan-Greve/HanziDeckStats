@@ -120,18 +120,18 @@ class CharacterData:
         return self.frequency_rank_map.get(char, 0)
 
     def get_frequency_category(self, char: str) -> str:
-        """Get frequency category (Top 1-500, 501-1000, etc.) or empty string."""
+        """Get frequency category (ranks 1-500, 501-1000, etc.) or empty string."""
         rank = self.get_frequency_rank(char)
         if rank == 0:
             return ""
         elif rank <= 500:
-            return "Top 1-500"
+            return "Rank 1-500"
         elif rank <= 1000:
-            return "Top 501-1000"
+            return "Rank 501-1000"
         elif rank <= 1500:
-            return "Top 1001-1500"
+            return "Rank 1001-1500"
         elif rank <= 2000:
-            return "Top 1501-2000"
+            return "Rank 1501-2000"
         else:
             return ""
 
@@ -208,10 +208,10 @@ class CharacterData:
                 'Bands 7-9': set(),
             },
             'frequency': {
-                'Top 1-500': set(),
-                'Top 501-1000': set(),
-                'Top 1001-1500': set(),
-                'Top 1501-2000': set(),
+                'Rank 1-500': set(),
+                'Rank 501-1000': set(),
+                'Rank 1001-1500': set(),
+                'Rank 1501-2000': set(),
             }
         }
 
