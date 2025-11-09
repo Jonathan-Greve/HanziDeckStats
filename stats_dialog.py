@@ -290,6 +290,9 @@ class HanziStatsDialog(QDialog):
 
     def _generate_category_table(self, stats: DeckStatistics, category_type: str) -> str:
         """Generate HTML table for a specific category type."""
+        import json
+        import html as html_module
+
         total_cat = stats.total_categorized.get(category_type, {})
         reviewed_cat = stats.reviewed_categorized.get(category_type, {})
 
@@ -300,8 +303,8 @@ class HanziStatsDialog(QDialog):
         <table class="category-table">
             <tr>
                 <th>Category</th>
-                <th>Total</th>
-                <th>Reviewed</th>
+                <th title="Total unique Hanzi in this category found in your deck">Total</th>
+                <th title="Hanzi you've reviewed at least once">Reviewed</th>
                 <th>Progress</th>
             </tr>
         """
@@ -312,9 +315,20 @@ class HanziStatsDialog(QDialog):
             reviewed_count = len(reviewed_chars)
             pct = (reviewed_count / total_count * 100) if total_count > 0 else 0
 
+            # Calculate missing characters
+            missing_chars = total_chars - reviewed_chars
+
             if total_count > 0:  # Only show categories with characters
+                # Prepare character data for JavaScript
+                char_data = {
+                    'reviewed': sorted(list(reviewed_chars)),
+                    'missing': sorted(list(missing_chars)),
+                    'category': category_name
+                }
+                char_data_json = html_module.escape(json.dumps(char_data))
+
                 html += f"""
-                <tr>
+                <tr class="clickable-row" data-chars='{char_data_json}' onclick="showCharacterDetails(this)" title="Click to see character details">
                     <td>{category_name}</td>
                     <td>{total_count}</td>
                     <td>{reviewed_count}</td>
@@ -378,6 +392,10 @@ class HanziStatsDialog(QDialog):
                     font-weight: 600;
                     color: #424242;
                     border-bottom: 2px solid #e0e0e0;
+                    cursor: help;
+                }
+                th[title] {
+                    position: relative;
                 }
                 td {
                     border-bottom: 1px solid #f0f0f0;
@@ -394,6 +412,13 @@ class HanziStatsDialog(QDialog):
                 .category-table {
                     font-size: 0.95em;
                     margin-left: 20px;
+                }
+                .clickable-row {
+                    cursor: pointer;
+                    transition: background-color 0.2s;
+                }
+                .clickable-row:hover {
+                    background-color: #e3f2fd !important;
                 }
                 .progress {
                     background-color: #e0e0e0;
@@ -419,9 +444,148 @@ class HanziStatsDialog(QDialog):
                 .progress-bar-category {
                     background: linear-gradient(90deg, #FF9800 0%, #F57C00 100%);
                 }
+
+                /* Modal styles */
+                .modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 1000;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    overflow: auto;
+                    background-color: rgba(0,0,0,0.5);
+                }
+                .modal-content {
+                    background-color: #fefefe;
+                    margin: 5% auto;
+                    padding: 0;
+                    border: 1px solid #888;
+                    border-radius: 8px;
+                    width: 80%;
+                    max-width: 800px;
+                    max-height: 80vh;
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                }
+                .modal-header {
+                    padding: 20px;
+                    background-color: #1976d2;
+                    color: white;
+                    border-radius: 8px 8px 0 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .modal-header h2 {
+                    margin: 0;
+                    color: white;
+                    border: none;
+                    padding: 0;
+                }
+                .modal-body {
+                    padding: 20px;
+                    overflow-y: auto;
+                    flex: 1;
+                }
+                .close {
+                    color: white;
+                    font-size: 32px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    line-height: 1;
+                    padding: 0 10px;
+                }
+                .close:hover {
+                    opacity: 0.7;
+                }
+                .char-section {
+                    margin-bottom: 25px;
+                }
+                .char-section h3 {
+                    color: #424242;
+                    margin-top: 0;
+                    margin-bottom: 12px;
+                    padding-bottom: 8px;
+                    border-bottom: 2px solid #e0e0e0;
+                }
+                .char-list {
+                    font-size: 28px;
+                    line-height: 1.8;
+                    letter-spacing: 8px;
+                    padding: 15px;
+                    background-color: #f5f5f5;
+                    border-radius: 4px;
+                    word-wrap: break-word;
+                }
+                .reviewed-section .char-list {
+                    background-color: #e8f5e9;
+                }
+                .missing-section .char-list {
+                    background-color: #ffebee;
+                }
+                .char-count {
+                    font-size: 14px;
+                    color: #666;
+                    margin-top: 8px;
+                    font-style: italic;
+                }
             </style>
+            <script>
+                function showCharacterDetails(row) {
+                    var charData = JSON.parse(row.getAttribute('data-chars'));
+                    var modal = document.getElementById('charModal');
+                    var modalTitle = document.getElementById('modalTitle');
+                    var reviewedChars = document.getElementById('reviewedChars');
+                    var missingChars = document.getElementById('missingChars');
+                    var reviewedCount = document.getElementById('reviewedCount');
+                    var missingCount = document.getElementById('missingCount');
+
+                    modalTitle.textContent = charData.category + ' - Character Details';
+                    reviewedChars.textContent = charData.reviewed.join(' ') || 'None';
+                    missingChars.textContent = charData.missing.join(' ') || 'None';
+                    reviewedCount.textContent = charData.reviewed.length + ' characters';
+                    missingCount.textContent = charData.missing.length + ' characters';
+
+                    modal.style.display = 'block';
+                }
+
+                function closeModal() {
+                    document.getElementById('charModal').style.display = 'none';
+                }
+
+                window.onclick = function(event) {
+                    var modal = document.getElementById('charModal');
+                    if (event.target == modal) {
+                        modal.style.display = 'none';
+                    }
+                }
+            </script>
         </head>
         <body>
+            <!-- Modal -->
+            <div id="charModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 id="modalTitle">Character Details</h2>
+                        <span class="close" onclick="closeModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="char-section reviewed-section">
+                            <h3>✓ Reviewed Characters</h3>
+                            <div class="char-list" id="reviewedChars"></div>
+                            <div class="char-count" id="reviewedCount"></div>
+                        </div>
+                        <div class="char-section missing-section">
+                            <h3>✗ Not Yet Reviewed</h3>
+                            <div class="char-list" id="missingChars"></div>
+                            <div class="char-count" id="missingCount"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         """
 
 
