@@ -31,8 +31,14 @@ class HanziStatsDialog(QDialog):
         # Store deck selection data: {deck_id: {'name': str, 'checkbox': QCheckBox, 'fields': [QCheckBox], 'subdecks': [QCheckBox]}}
         self.deck_data: Dict[int, Dict] = {}
 
+        # Flag to prevent refreshes during UI setup
+        self._is_loading = True
+
         # Setup UI
         self._setup_ui()
+
+        # Setup complete, enable auto-refresh
+        self._is_loading = False
 
         # Load initial stats
         self.refresh_stats()
@@ -98,30 +104,10 @@ class HanziStatsDialog(QDialog):
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(8)
 
-        # Title and refresh button row
-        header_row = QHBoxLayout()
+        # Title row
         title_label = QLabel("Select Decks to Analyze:")
         title_label.setStyleSheet("font-size: 10px;")
-        header_row.addWidget(title_label)
-        header_row.addStretch()
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #1976d2;
-                color: white;
-                border: none;
-                padding: 4px 12px;
-                border-radius: 3px;
-                font-weight: bold;
-                font-size: 10px;
-            }
-            QPushButton:hover {
-                background-color: #1565c0;
-            }
-        """)
-        refresh_btn.clicked.connect(self.refresh_stats)
-        header_row.addWidget(refresh_btn)
-        main_layout.addLayout(header_row)
+        main_layout.addWidget(title_label)
 
         # Scrollable area for deck selections
         scroll_area = QScrollArea()
@@ -181,6 +167,7 @@ class HanziStatsDialog(QDialog):
                 }
             """)
             deck_cb.stateChanged.connect(lambda state, did=deck_id: self._on_deck_toggled(did, state))
+            deck_cb.stateChanged.connect(self.refresh_stats)
 
             deck_label = QLabel(deck_name)
             deck_label.setStyleSheet("font-weight: bold; font-size: 11px; color: #1976d2;")
@@ -220,6 +207,7 @@ class HanziStatsDialog(QDialog):
                 field_cb.setStyleSheet("margin-left: 8px; font-size: 9px;")
                 # Check if this field was previously selected
                 field_cb.setChecked(field_value in saved_fields)
+                field_cb.stateChanged.connect(self.refresh_stats)
                 options_layout.addWidget(field_cb)
                 field_checkboxes.append((field_value, field_cb))
 
@@ -244,6 +232,7 @@ class HanziStatsDialog(QDialog):
                         subdeck_cb.setChecked(sub_id in saved_subdecks)
                     else:
                         subdeck_cb.setChecked(True)  # Default to including subdecks
+                    subdeck_cb.stateChanged.connect(self.refresh_stats)
                     options_layout.addWidget(subdeck_cb)
                     subdeck_checkboxes.append((sub_id, sub_name, subdeck_cb))
 
@@ -338,6 +327,10 @@ class HanziStatsDialog(QDialog):
 
     def refresh_stats(self):
         """Recalculate and display statistics."""
+        # Skip refresh during UI setup
+        if self._is_loading:
+            return
+
         # Save current selections to config
         self._save_selections()
 
