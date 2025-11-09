@@ -171,7 +171,9 @@ class HanziStatsDialog(QDialog):
             # Header row with checkbox and deck name
             header_row = QHBoxLayout()
             deck_cb = QCheckBox()
-            deck_cb.setChecked(False)
+            # Load saved state from config
+            saved_decks = self.config.get('selectedDecks', {})
+            deck_cb.setChecked(saved_decks.get(str(deck_id), {}).get('selected', False))
             deck_cb.setStyleSheet("""
                 QCheckBox::indicator {
                     width: 16px;
@@ -212,15 +214,18 @@ class HanziStatsDialog(QDialog):
                 field_options.append((str(i), field_name))
 
             field_checkboxes = []
+            saved_fields = saved_decks.get(str(deck_id), {}).get('fields', ['all'])
             for field_value, field_label in field_options:
                 field_cb = QCheckBox(field_label)
                 field_cb.setStyleSheet("margin-left: 8px; font-size: 9px;")
-                field_cb.setChecked(field_value == "all")  # Default to "All Fields"
+                # Check if this field was previously selected
+                field_cb.setChecked(field_value in saved_fields)
                 options_layout.addWidget(field_cb)
                 field_checkboxes.append((field_value, field_cb))
 
             # Subdeck selection checkboxes
             subdeck_checkboxes = []
+            saved_subdecks = saved_decks.get(str(deck_id), {}).get('subdecks', [])
             # Get subdecks for this deck
             subdecks_exist = False
             for sub_id, sub_name in deck_list:
@@ -234,12 +239,17 @@ class HanziStatsDialog(QDialog):
 
                     subdeck_cb = QCheckBox(sub_name.split("::")[-1])  # Just show the last part
                     subdeck_cb.setStyleSheet("margin-left: 8px; font-size: 9px;")
-                    subdeck_cb.setChecked(True)  # Default to including subdecks
+                    # Restore saved state, default to True if not saved yet
+                    if saved_subdecks:
+                        subdeck_cb.setChecked(sub_id in saved_subdecks)
+                    else:
+                        subdeck_cb.setChecked(True)  # Default to including subdecks
                     options_layout.addWidget(subdeck_cb)
                     subdeck_checkboxes.append((sub_id, sub_name, subdeck_cb))
 
             options_widget.setLayout(options_layout)
-            options_widget.setVisible(False)  # Hidden by default
+            # Show options if deck was previously selected
+            options_widget.setVisible(deck_cb.isChecked())
             deck_layout.addWidget(options_widget)
 
             deck_widget.setLayout(deck_layout)
@@ -298,8 +308,39 @@ class HanziStatsDialog(QDialog):
             # Show/hide the options widget
             deck_info['options_widget'].setVisible(is_checked)
 
+    def _save_selections(self):
+        """Save current deck/field/subdeck selections to config."""
+        selected_decks = {}
+
+        for deck_id, deck_info in self.deck_data.items():
+            # Get selected fields
+            selected_fields = []
+            for field_value, field_cb in deck_info['fields']:
+                if field_cb.isChecked():
+                    selected_fields.append(field_value)
+
+            # Get selected subdecks
+            selected_subdecks = []
+            for sub_id, sub_name, subdeck_cb in deck_info['subdecks']:
+                if subdeck_cb.isChecked():
+                    selected_subdecks.append(sub_id)
+
+            # Save this deck's state
+            selected_decks[str(deck_id)] = {
+                'selected': deck_info['checkbox'].isChecked(),
+                'fields': selected_fields,
+                'subdecks': selected_subdecks
+            }
+
+        # Update config
+        self.config['selectedDecks'] = selected_decks
+        mw.addonManager.writeConfig(__name__.split('.')[0], self.config)
+
     def refresh_stats(self):
         """Recalculate and display statistics."""
+        # Save current selections to config
+        self._save_selections()
+
         # Show progress indicator
         mw.progress.start(label="Calculating Hanzi statistics...")
 
