@@ -2,19 +2,45 @@
 
 An Anki addon that tracks how many Hanzi (Chinese characters) you've seen in each deck, with detailed breakdowns by HSK level and frequency.
 
+## Screenshots
+
+### Deck Selection
+![Deck Selection](screenshots/deck_selection_00.png)
+*Multi-select decks with per-deck field and subdeck options*
+
+### HSK 2.0 (2012) Breakdown
+![HSK 2.0 Breakdown](screenshots/hsk20_breakdown_00.png)
+*Track progress through HSK 2.0 levels 1-6*
+
+### HSK 3.0 (2021) Breakdown
+![HSK 3.0 Breakdown](screenshots/hsk30_breakdown_00.png)
+*Comprehensive HSK 3.0 coverage with bands 1-9*
+
+### Frequency Analysis
+![Frequency Analysis](screenshots/frequency_00.png)
+*Character frequency rankings based on Jun Da corpus*
+
+### Character Details
+![Character Details](screenshots/character_details_00.png)
+*Click any category to see reviewed, missing, and not-in-deck characters*
+
 ## Features
 
-- **Per-Deck Statistics**: View Hanzi counts for individual decks or all decks at once
+- **Multi-Deck Selection**: Select multiple decks simultaneously with checkboxes
+- **Per-Deck Configuration**: Choose specific fields and subdecks for each deck independently
+- **Combined Statistics**: All selections merge into a single comprehensive view
+- **Auto-Refresh**: Statistics update instantly when selections change
 - **Two Metrics**:
   - **Total Hanzi**: All unique characters in the deck (including new cards)
   - **Reviewed Hanzi**: Characters you've actually studied
-- **Subdeck Control**: Choose whether to include subdeck cards
 - **Category Breakdowns**:
-  - HSK 2012 (Levels 1-6)
-  - HSK 2021 / HSK 3.0 (Bands 1-9)
-  - Frequency bands (Top 500, 1000, 1500, 2000)
+  - HSK 2.0 (2012) - Levels 1-6
+  - HSK 3.0 (2021) - Bands 1-9
+  - Frequency rankings (Rank 1-500, 501-1000, 1001-1500, 1501-2000)
+- **Interactive Details**: Click any category to see specific characters (reviewed, missing, not in deck)
+- **Persistent Settings**: Your selections are remembered across sessions
 - **Modern Data Sources**: Uses up-to-date HSK 3.0 and frequency data from comprehensive corpora
-- **Beautiful UI**: Clean, modern interface with progress bars and responsive design
+- **Beautiful UI**: Clean, compact interface with progress bars and responsive design
 
 ## Installation
 
@@ -58,11 +84,12 @@ Once published to AnkiWeb, you can install via:
 
 1. Open Anki
 2. Go to **Tools → Hanzi Deck Stats**
-3. Select a deck from the dropdown menu
-   - Choose **"All Decks"** to see statistics for all top-level decks
-   - Choose a specific deck to see just that deck
-4. Check or uncheck **"Include subdecks"** as needed
-5. Click **"Refresh"** to recalculate statistics
+3. Select one or more decks using checkboxes
+4. For each selected deck, expand options to:
+   - Choose which fields to analyze (e.g., Hanzi, Pinyin, English)
+   - Select which subdecks to include
+5. Statistics automatically update as you make selections
+6. Your choices are saved and restored next time
 
 ### Understanding the Statistics
 
@@ -74,22 +101,24 @@ Once published to AnkiWeb, you can install via:
 
 **Category Breakdown**: Shows how many characters you've seen from each HSK level or frequency band.
 
+**Interactive Categories**: Click any category row to see a detailed modal showing:
+- ✓ Reviewed Characters (green)
+- ✗ Not Yet Reviewed (red)
+- ⊘ Not in Deck (orange, for HSK categories only)
+
 ## Configuration
 
 Access configuration via **Tools → Add-ons → Hanzi Deck Statistics → Config**
 
 ### Options
 
-- **fieldToUseForStats**: Which field to extract Hanzi from
-  - `"sortField"` (default): First field only
-  - `"all"`: All fields
-  - `"1"`, `"2"`, etc.: Specific field number
-
-- **includeSubdecks**: Whether to include subdeck cards by default (true/false)
-
 - **showCategories**: Whether to show HSK/frequency breakdowns (true/false)
 
 - **categoriesToShow**: List of categories to display (see config.md for options)
+
+- **selectedDecks**: Automatically saved dictionary of your deck/field/subdeck selections (managed by the UI)
+
+Note: Field and subdeck selections are now managed per-deck through the UI and automatically saved. The old global `fieldToUseForStats` and `includeSubdecks` options have been replaced by per-deck selections.
 
 ## Data Sources
 
@@ -169,9 +198,18 @@ For issues, questions, or feature requests, please file an issue on GitHub.
 
 ### Version 1.0.0 (2025-11-09)
 
-- Initial release
-- Per-deck statistics with subdeck control
-- HSK 2012 and HSK 2021 support
-- Frequency band categorization
-- Modern, responsive UI
+- Initial release with multi-deck selection
+- Multi-deck selection with checkboxes (no "All Decks" option)
+- Per-deck field selection with actual field names from note types
+- Per-deck subdeck selection with individual checkboxes
+- Combined statistics across all selected decks and fields
+- Auto-refresh on any checkbox change
+- Persistent settings (selections saved across sessions)
+- Interactive character detail modals
+- HSK 2.0 (2012) support with levels 1-6
+- HSK 3.0 (2021) support with bands 1-9
+- Frequency rankings based on Jun Da corpus (ranks 1-500, 501-1000, 1001-1500, 1501-2000)
+- Official HSK character lists with "Not in Deck" tracking
+- Modern, compact UI with collapsible deck options
 - Comprehensive character data from multiple sources
+- Fixed: Character counts now accurate (simplified only, no traditional duplicates)
