@@ -327,20 +327,14 @@ class HanziStatsDialog(QDialog):
                     if subdeck_cb.isChecked():
                         selected_subdeck_ids.append(sub_id)
 
-                # Calculate stats for each selected field
-                for field_value in selected_fields:
-                    # Update config temporarily
-                    self.config['fieldToUseForStats'] = field_value
-                    self.calculator.config = self.config
-
-                    # Calculate stats using selected deck IDs
-                    stats = self._calculate_deck_stats_with_specific_decks(
-                        deck_id,
-                        deck_info['name'],
-                        selected_subdeck_ids,
-                        field_value
-                    )
-                    all_stats.append(stats)
+                # Calculate stats with combined fields
+                stats = self._calculate_deck_stats_with_combined_fields(
+                    deck_id,
+                    deck_info['name'],
+                    selected_subdeck_ids,
+                    selected_fields
+                )
+                all_stats.append(stats)
 
             # Generate HTML
             if len(all_stats) == 0:
@@ -370,6 +364,63 @@ class HanziStatsDialog(QDialog):
 
         finally:
             mw.progress.finish()
+
+    def _calculate_deck_stats_with_combined_fields(self, deck_id: int, deck_name: str,
+                                                     subdeck_ids: List[int], field_values: List[str]):
+        """Calculate stats for a deck combining multiple fields."""
+        from .stats_calculator import DeckStatistics
+
+        # Create descriptive name with selected fields
+        field_names = self._get_field_names_for_deck(deck_id)
+        field_labels = []
+
+        for field_value in field_values:
+            if field_value == 'all':
+                field_labels.append('All Fields')
+            elif field_value == 'sortField':
+                field_labels.append('Sort Field')
+            elif field_value.isdigit():
+                field_index = int(field_value) - 1
+                if 0 <= field_index < len(field_names):
+                    field_labels.append(field_names[field_index])
+                else:
+                    field_labels.append(f"Field {field_value}")
+            else:
+                field_labels.append(field_value)
+
+        if len(field_labels) == 1:
+            display_name = f"{deck_name} ({field_labels[0]})"
+        else:
+            display_name = f"{deck_name} ({', '.join(field_labels)})"
+
+        stats = DeckStatistics(deck_id, display_name)
+
+        # Combine hanzi from all selected fields
+        total_hanzi_combined = set()
+        reviewed_hanzi_combined = set()
+
+        for field_value in field_values:
+            # Update config temporarily
+            self.config['fieldToUseForStats'] = field_value
+            self.calculator.config = self.config
+
+            # Get hanzi for this field
+            field_total = self.calculator._get_hanzi_from_cards(subdeck_ids, include_new=True, field_mode=field_value)
+            field_reviewed = self.calculator._get_hanzi_from_cards(subdeck_ids, include_new=False, field_mode=field_value)
+
+            # Union with existing sets
+            total_hanzi_combined.update(field_total)
+            reviewed_hanzi_combined.update(field_reviewed)
+
+        stats.total_hanzi = total_hanzi_combined
+        stats.reviewed_hanzi = reviewed_hanzi_combined
+
+        # Categorize characters
+        if self.config.get('showCategories', True):
+            stats.total_categorized = self.calculator.character_data.categorize_characters(stats.total_hanzi)
+            stats.reviewed_categorized = self.calculator.character_data.categorize_characters(stats.reviewed_hanzi)
+
+        return stats
 
     def _calculate_deck_stats_with_specific_decks(self, deck_id: int, deck_name: str,
                                                     subdeck_ids: List[int], field_value: str):
