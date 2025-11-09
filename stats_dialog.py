@@ -37,14 +37,16 @@ class HanziStatsDialog(QDialog):
     def _setup_ui(self):
         """Setup the dialog UI layout."""
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
         # Controls at top
         controls = self._create_controls()
-        layout.addWidget(controls)
+        layout.addWidget(controls, stretch=0)
 
         # Stats display (HTML)
         self.webview = AnkiWebView(parent=self)
-        layout.addWidget(self.webview)
+        layout.addWidget(self.webview, stretch=1)
 
         self.setLayout(layout)
 
@@ -52,6 +54,7 @@ class HanziStatsDialog(QDialog):
         """Create the control panel at the top of the dialog."""
         controls_widget = QWidget()
         controls_layout = QHBoxLayout()
+        controls_layout.setContentsMargins(10, 10, 10, 10)
 
         # Deck selector
         controls_layout.addWidget(QLabel("Deck:"))
