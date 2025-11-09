@@ -280,10 +280,7 @@ class HanziStatsDialog(QDialog):
                 model = mw.col.models.get(model_id)
                 if model:
                     field_names = [field['name'] for field in model['flds']]
-                    print(f"DEBUG: Found field names for deck {deck_id}: {field_names}")
                     return field_names
-
-            print(f"DEBUG: No result from query for deck {deck_id}")
         except Exception as e:
             print(f"Error getting field names for deck {deck_id}: {e}")
             import traceback
@@ -380,16 +377,22 @@ class HanziStatsDialog(QDialog):
         from .stats_calculator import DeckStatistics
 
         # Create stats object with a descriptive name
-        field_labels = {
-            'all': 'All Fields',
-            'sortField': 'Sort Field',
-            '1': '1st Field',
-            '2': '2nd Field',
-            '3': '3rd Field',
-            '4': '4th Field',
-            '5': '5th Field',
-        }
-        field_label = field_labels.get(field_value, field_value)
+        # Get the actual field name for this deck
+        field_names = self._get_field_names_for_deck(deck_id)
+
+        if field_value == 'all':
+            field_label = 'All Fields'
+        elif field_value == 'sortField':
+            field_label = 'Sort Field'
+        elif field_value.isdigit():
+            field_index = int(field_value) - 1  # Convert to 0-based index
+            if 0 <= field_index < len(field_names):
+                field_label = field_names[field_index]
+            else:
+                field_label = f"Field {field_value}"
+        else:
+            field_label = field_value
+
         display_name = f"{deck_name} ({field_label})"
 
         stats = DeckStatistics(deck_id, display_name)
