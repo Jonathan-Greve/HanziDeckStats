@@ -90,9 +90,8 @@ class CharacterData:
             with open(csv_path, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    # Get characters
+                    # Get simplified character only (Jun Da frequency is based on simplified)
                     simplified = row.get('simplified', '')
-                    traditional = row.get('traditional', '')
 
                     # Parse frequency rank (Jun Da)
                     freq_str = row.get('frequency_junda', '')
@@ -100,8 +99,6 @@ class CharacterData:
                         freq_rank = int(freq_str)
                         if simplified:
                             self.frequency_rank_map[simplified] = freq_rank
-                        if traditional and traditional != simplified:
-                            self.frequency_rank_map[traditional] = freq_rank
         except FileNotFoundError:
             print(f"Warning: Frequency data file not found: {csv_path}")
         except Exception as e:
