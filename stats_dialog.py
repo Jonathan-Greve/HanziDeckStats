@@ -2,12 +2,12 @@
 Statistics dialog UI for Hanzi Deck Statistics addon.
 """
 
-from typing import List
+from typing import List, Dict
 
 from aqt import mw
 from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QComboBox,
-    QCheckBox, QPushButton, QLabel, QWidget
+    QCheckBox, QPushButton, QLabel, QWidget, QScrollArea, QFrame, QGroupBox
 )
 from aqt.webview import AnkiWebView
 
@@ -27,6 +27,9 @@ class HanziStatsDialog(QDialog):
 
         # Create calculator
         self.calculator = StatsCalculator(mw.col, self.config)
+
+        # Store deck selection data: {deck_id: {'name': str, 'checkbox': QCheckBox, 'fields': [QCheckBox], 'subdecks': [QCheckBox]}}
+        self.deck_data: Dict[int, Dict] = {}
 
         # Setup UI
         self._setup_ui()
@@ -61,13 +64,6 @@ class HanziStatsDialog(QDialog):
                 color: #333333;
                 font-weight: bold;
             }
-            QComboBox {
-                background-color: white;
-                color: #333333;
-                border: 1px solid #cccccc;
-                padding: 4px;
-                border-radius: 3px;
-            }
             QPushButton {
                 background-color: #1976d2;
                 color: white;
@@ -82,69 +78,228 @@ class HanziStatsDialog(QDialog):
             QCheckBox {
                 color: #333333;
             }
+            QGroupBox {
+                background-color: white;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+                margin-top: 8px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                color: #1976d2;
+                font-weight: bold;
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
         """)
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(8)
 
-        # First row: Deck and Field selectors
-        row1 = QHBoxLayout()
-
-        # Deck selector
-        row1.addWidget(QLabel("Deck:"))
-        self.deck_selector = QComboBox()
-        self._populate_deck_selector()
-        row1.addWidget(self.deck_selector, stretch=2)
-
-        # Field selector
-        row1.addWidget(QLabel("Fields:"))
-        self.field_selector = QComboBox()
-        self.field_selector.addItem("All Fields", "all")
-        self.field_selector.addItem("Sort Field Only", "sortField")
-        self.field_selector.addItem("1st Field", "1")
-        self.field_selector.addItem("2nd Field", "2")
-        self.field_selector.addItem("3rd Field", "3")
-        self.field_selector.addItem("4th Field", "4")
-        self.field_selector.addItem("5th Field", "5")
-        # Set default from config
-        default_field = self.config.get('fieldToUseForStats', 'all')
-        for i in range(self.field_selector.count()):
-            if self.field_selector.itemData(i) == default_field:
-                self.field_selector.setCurrentIndex(i)
-                break
-        row1.addWidget(self.field_selector, stretch=1)
-
-        main_layout.addLayout(row1)
-
-        # Second row: Checkbox and Refresh button
-        row2 = QHBoxLayout()
-
-        # Include subdecks checkbox
-        self.include_subdecks_cb = QCheckBox("Include subdecks")
-        default_include = self.config.get('includeSubdecks', True)
-        self.include_subdecks_cb.setChecked(default_include)
-        row2.addWidget(self.include_subdecks_cb)
-
-        row2.addStretch()
-
-        # Refresh button
+        # Title and refresh button row
+        header_row = QHBoxLayout()
+        title_label = QLabel("Select Decks to Analyze:")
+        title_label.setStyleSheet("font-size: 10px;")
+        header_row.addWidget(title_label)
+        header_row.addStretch()
         refresh_btn = QPushButton("Refresh")
+        refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1976d2;
+                color: white;
+                border: none;
+                padding: 4px 12px;
+                border-radius: 3px;
+                font-weight: bold;
+                font-size: 10px;
+            }
+            QPushButton:hover {
+                background-color: #1565c0;
+            }
+        """)
         refresh_btn.clicked.connect(self.refresh_stats)
-        row2.addWidget(refresh_btn)
+        header_row.addWidget(refresh_btn)
+        main_layout.addLayout(header_row)
 
-        main_layout.addLayout(row2)
+        # Scrollable area for deck selections
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setMaximumHeight(300)
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout()
+        scroll_layout.setSpacing(5)
+
+        # Populate deck checkboxes
+        self._populate_deck_checkboxes(scroll_layout)
+
+        scroll_content.setLayout(scroll_layout)
+        scroll_area.setWidget(scroll_content)
+        main_layout.addWidget(scroll_area)
 
         controls_widget.setLayout(main_layout)
         return controls_widget
 
-    def _populate_deck_selector(self):
-        """Populate the deck selector dropdown."""
-        self.deck_selector.clear()
-
+    def _populate_deck_checkboxes(self, layout: QVBoxLayout):
+        """Populate deck checkboxes with field and subdeck options."""
         deck_list = self.calculator.get_deck_list()
+
+        # Skip "All Decks" entry (deck_id == 0)
         for deck_id, deck_name in deck_list:
-            self.deck_selector.addItem(deck_name, deck_id)
+            if deck_id == 0:  # Skip "All Decks"
+                continue
+
+            # Skip subdecks (we'll handle them separately)
+            if "::" in deck_name:
+                continue
+
+            # Create container widget for this deck
+            deck_widget = QWidget()
+            deck_widget.setStyleSheet("""
+                QWidget {
+                    background-color: white;
+                    border: 1px solid #cccccc;
+                    border-radius: 4px;
+                    padding: 6px;
+                }
+            """)
+            deck_layout = QVBoxLayout()
+            deck_layout.setContentsMargins(6, 6, 6, 6)
+            deck_layout.setSpacing(8)
+
+            # Header row with checkbox and deck name
+            header_row = QHBoxLayout()
+            deck_cb = QCheckBox()
+            deck_cb.setChecked(False)
+            deck_cb.setStyleSheet("""
+                QCheckBox::indicator {
+                    width: 16px;
+                    height: 16px;
+                }
+            """)
+            deck_cb.stateChanged.connect(lambda state, did=deck_id: self._on_deck_toggled(did, state))
+
+            deck_label = QLabel(deck_name)
+            deck_label.setStyleSheet("font-weight: bold; font-size: 11px; color: #1976d2;")
+
+            header_row.addWidget(deck_cb)
+            header_row.addWidget(deck_label)
+            header_row.addStretch()
+            deck_layout.addLayout(header_row)
+
+            # Options container (hidden by default)
+            options_widget = QWidget()
+            options_layout = QVBoxLayout()
+            options_layout.setContentsMargins(25, 0, 0, 0)
+            options_layout.setSpacing(6)
+
+            # Field selection checkboxes
+            fields_label = QLabel("Fields to include:")
+            fields_label.setStyleSheet("font-weight: bold; font-size: 9px; color: #666;")
+            options_layout.addWidget(fields_label)
+
+            # Get field names for this deck
+            field_names = self._get_field_names_for_deck(deck_id)
+
+            field_options = [
+                ("all", "All Fields"),
+                ("sortField", "Sort Field Only"),
+            ]
+
+            # Add individual field options with actual names
+            for i, field_name in enumerate(field_names[:5], 1):  # Limit to first 5 fields
+                field_options.append((str(i), field_name))
+
+            field_checkboxes = []
+            for field_value, field_label in field_options:
+                field_cb = QCheckBox(field_label)
+                field_cb.setStyleSheet("margin-left: 8px; font-size: 9px;")
+                field_cb.setChecked(field_value == "all")  # Default to "All Fields"
+                options_layout.addWidget(field_cb)
+                field_checkboxes.append((field_value, field_cb))
+
+            # Subdeck selection checkboxes
+            subdeck_checkboxes = []
+            # Get subdecks for this deck
+            subdecks_exist = False
+            for sub_id, sub_name in deck_list:
+                if sub_name.startswith(deck_name + "::"):
+                    if not subdecks_exist:
+                        # Add label for subdecks
+                        subdecks_label = QLabel("Subdecks to include:")
+                        subdecks_label.setStyleSheet("font-weight: bold; font-size: 9px; color: #666; margin-top: 6px;")
+                        options_layout.addWidget(subdecks_label)
+                        subdecks_exist = True
+
+                    subdeck_cb = QCheckBox(sub_name.split("::")[-1])  # Just show the last part
+                    subdeck_cb.setStyleSheet("margin-left: 8px; font-size: 9px;")
+                    subdeck_cb.setChecked(True)  # Default to including subdecks
+                    options_layout.addWidget(subdeck_cb)
+                    subdeck_checkboxes.append((sub_id, sub_name, subdeck_cb))
+
+            options_widget.setLayout(options_layout)
+            options_widget.setVisible(False)  # Hidden by default
+            deck_layout.addWidget(options_widget)
+
+            deck_widget.setLayout(deck_layout)
+            layout.addWidget(deck_widget)
+
+            # Store deck data
+            self.deck_data[deck_id] = {
+                'name': deck_name,
+                'checkbox': deck_cb,
+                'fields': field_checkboxes,
+                'subdecks': subdeck_checkboxes,
+                'options_widget': options_widget
+            }
+
+        layout.addStretch()
+
+    def _get_field_names_for_deck(self, deck_id: int) -> List[str]:
+        """Get field names from the most common note type in a deck."""
+        try:
+            # Get deck and its subdecks
+            deck_ids = mw.col.decks.deck_and_child_ids(deck_id)
+
+            # Query to find the most common note type in this deck (including subdecks)
+            placeholders = ','.join('?' * len(deck_ids))
+            query = f"""
+                SELECT notes.mid, COUNT(*) as cnt
+                FROM cards
+                INNER JOIN notes ON cards.nid = notes.id
+                WHERE cards.did IN ({placeholders})
+                GROUP BY notes.mid
+                ORDER BY cnt DESC
+                LIMIT 1
+            """
+            results = mw.col.db.execute(query, *deck_ids)
+
+            if results and len(results) > 0:
+                model_id = results[0][0]
+                model = mw.col.models.get(model_id)
+                if model:
+                    field_names = [field['name'] for field in model['flds']]
+                    print(f"DEBUG: Found field names for deck {deck_id}: {field_names}")
+                    return field_names
+
+            print(f"DEBUG: No result from query for deck {deck_id}")
+        except Exception as e:
+            print(f"Error getting field names for deck {deck_id}: {e}")
+            import traceback
+            traceback.print_exc()
+
+        # Fallback to generic names
+        return ["1st Field", "2nd Field", "3rd Field", "4th Field", "5th Field"]
+
+    def _on_deck_toggled(self, deck_id: int, state: int):
+        """Handle deck checkbox toggle - show/hide field and subdeck options."""
+        is_checked = state == 2  # Qt.Checked == 2
+        deck_info = self.deck_data.get(deck_id)
+
+        if deck_info:
+            # Show/hide the options widget
+            deck_info['options_widget'].setVisible(is_checked)
 
     def refresh_stats(self):
         """Recalculate and display statistics."""
@@ -152,24 +307,51 @@ class HanziStatsDialog(QDialog):
         mw.progress.start(label="Calculating Hanzi statistics...")
 
         try:
-            # Get selected deck
-            deck_id = self.deck_selector.currentData()
-            include_subdecks = self.include_subdecks_cb.isChecked()
+            all_stats = []
 
-            # Get selected field and update config temporarily
-            selected_field = self.field_selector.currentData()
-            self.config['fieldToUseForStats'] = selected_field
-            self.calculator.config = self.config
+            # Process each selected deck
+            for deck_id, deck_info in self.deck_data.items():
+                if not deck_info['checkbox'].isChecked():
+                    continue  # Skip unselected decks
 
-            # Calculate stats
-            if deck_id == 0:
-                # All decks
-                all_stats = self.calculator.calculate_all_decks_stats(include_subdecks)
-                html = self._generate_multi_deck_html(all_stats)
+                # Get selected fields for this deck
+                selected_fields = []
+                for field_value, field_cb in deck_info['fields']:
+                    if field_cb.isChecked():
+                        selected_fields.append(field_value)
+
+                # If no fields selected, skip this deck
+                if not selected_fields:
+                    continue
+
+                # Get selected subdecks
+                selected_subdeck_ids = [deck_id]  # Always include the main deck
+                for sub_id, sub_name, subdeck_cb in deck_info['subdecks']:
+                    if subdeck_cb.isChecked():
+                        selected_subdeck_ids.append(sub_id)
+
+                # Calculate stats for each selected field
+                for field_value in selected_fields:
+                    # Update config temporarily
+                    self.config['fieldToUseForStats'] = field_value
+                    self.calculator.config = self.config
+
+                    # Calculate stats using selected deck IDs
+                    stats = self._calculate_deck_stats_with_specific_decks(
+                        deck_id,
+                        deck_info['name'],
+                        selected_subdeck_ids,
+                        field_value
+                    )
+                    all_stats.append(stats)
+
+            # Generate HTML
+            if len(all_stats) == 0:
+                html = self._generate_no_selection_html()
+            elif len(all_stats) == 1:
+                html = self._generate_single_deck_html(all_stats[0])
             else:
-                # Single deck
-                stats = self.calculator.calculate_deck_stats(deck_id, include_subdecks)
-                html = self._generate_single_deck_html(stats)
+                html = self._generate_multi_deck_html(all_stats)
 
             # Display HTML
             self.webview.stdHtml(html)
@@ -191,6 +373,54 @@ class HanziStatsDialog(QDialog):
 
         finally:
             mw.progress.finish()
+
+    def _calculate_deck_stats_with_specific_decks(self, deck_id: int, deck_name: str,
+                                                    subdeck_ids: List[int], field_value: str):
+        """Calculate stats for a deck with specific subdeck IDs."""
+        from .stats_calculator import DeckStatistics
+
+        # Create stats object with a descriptive name
+        field_labels = {
+            'all': 'All Fields',
+            'sortField': 'Sort Field',
+            '1': '1st Field',
+            '2': '2nd Field',
+            '3': '3rd Field',
+            '4': '4th Field',
+            '5': '5th Field',
+        }
+        field_label = field_labels.get(field_value, field_value)
+        display_name = f"{deck_name} ({field_label})"
+
+        stats = DeckStatistics(deck_id, display_name)
+
+        # Get field mode
+        field_mode = field_value
+
+        # Query for all cards (including new/unseen cards)
+        stats.total_hanzi = self.calculator._get_hanzi_from_cards(subdeck_ids, include_new=True, field_mode=field_mode)
+
+        # Query for only reviewed cards
+        stats.reviewed_hanzi = self.calculator._get_hanzi_from_cards(subdeck_ids, include_new=False, field_mode=field_mode)
+
+        # Categorize characters
+        if self.config.get('showCategories', True):
+            stats.total_categorized = self.calculator.character_data.categorize_characters(stats.total_hanzi)
+            stats.reviewed_categorized = self.calculator.character_data.categorize_characters(stats.reviewed_hanzi)
+
+        return stats
+
+    def _generate_no_selection_html(self) -> str:
+        """Generate HTML when no decks are selected."""
+        html = self._get_html_header()
+        html += """
+        <h1>Hanzi Deck Statistics</h1>
+        <p style="font-size: 1.2em; color: #666; margin-top: 50px; text-align: center;">
+            Please select at least one deck and one field to view statistics.
+        </p>
+        </body></html>
+        """
+        return html
 
     def _generate_multi_deck_html(self, all_stats: List[DeckStatistics]) -> str:
         """Generate HTML report for multiple decks."""
@@ -299,12 +529,26 @@ class HanziStatsDialog(QDialog):
         if not total_cat:
             return "<p><em>No data available</em></p>"
 
+        # Get official character lists for HSK types
+        official_chars = {}
+        if category_type == 'hsk_2012':
+            official_chars = self.calculator.character_data.get_official_hsk_2012_characters()
+        elif category_type == 'hsk_2021':
+            official_chars = self.calculator.character_data.get_official_hsk_2021_characters()
+
         html = """
         <table class="category-table">
             <tr>
                 <th>Category</th>
-                <th class="tooltip-header" data-tooltip="Total unique Hanzi in this category found in your deck">Total ℹ️</th>
+                <th class="tooltip-header" data-tooltip="Total unique Hanzi in this category found in your deck">In Deck ℹ️</th>
                 <th class="tooltip-header" data-tooltip="Hanzi you've reviewed at least once">Reviewed ℹ️</th>
+        """
+
+        # Add Official column for HSK categories
+        if official_chars:
+            html += '<th class="tooltip-header" data-tooltip="Total Hanzi in official HSK list for this category">Official ℹ️</th>'
+
+        html += """
                 <th>Progress</th>
             </tr>
         """
@@ -318,11 +562,17 @@ class HanziStatsDialog(QDialog):
             # Calculate missing characters
             missing_chars = total_chars - reviewed_chars
 
-            if total_count > 0:  # Only show categories with characters
+            # Get official characters and calculate not-in-deck
+            official_category_chars = official_chars.get(category_name, set()) if official_chars else set()
+            not_in_deck_chars = official_category_chars - total_chars
+            official_count = len(official_category_chars)
+
+            if total_count > 0 or official_count > 0:  # Show categories with characters
                 # Prepare character data for JavaScript
                 char_data = {
                     'reviewed': sorted(list(reviewed_chars)),
                     'missing': sorted(list(missing_chars)),
+                    'notInDeck': sorted(list(not_in_deck_chars)),
                     'category': category_name
                 }
                 char_data_json = html_module.escape(json.dumps(char_data))
@@ -332,6 +582,13 @@ class HanziStatsDialog(QDialog):
                     <td>{category_name}</td>
                     <td>{total_count}</td>
                     <td>{reviewed_count}</td>
+                """
+
+                # Add official count if applicable
+                if official_chars:
+                    html += f"<td>{official_count}</td>"
+
+                html += f"""
                     <td>
                         <div class="progress">
                             <div class="progress-bar progress-bar-category" style="width: {pct}%"></div>
@@ -553,6 +810,9 @@ class HanziStatsDialog(QDialog):
                 .missing-section .char-list {
                     background-color: #ffebee;
                 }
+                .not-in-deck-section .char-list {
+                    background-color: #fff3e0;
+                }
                 .char-count {
                     font-size: 14px;
                     color: #666;
@@ -567,14 +827,26 @@ class HanziStatsDialog(QDialog):
                     var modalTitle = document.getElementById('modalTitle');
                     var reviewedChars = document.getElementById('reviewedChars');
                     var missingChars = document.getElementById('missingChars');
+                    var notInDeckChars = document.getElementById('notInDeckChars');
                     var reviewedCount = document.getElementById('reviewedCount');
                     var missingCount = document.getElementById('missingCount');
+                    var notInDeckCount = document.getElementById('notInDeckCount');
+                    var notInDeckSection = document.getElementById('notInDeckSection');
 
                     modalTitle.textContent = charData.category + ' - Character Details';
                     reviewedChars.textContent = charData.reviewed.join(' ') || 'None';
                     missingChars.textContent = charData.missing.join(' ') || 'None';
                     reviewedCount.textContent = charData.reviewed.length + ' characters';
                     missingCount.textContent = charData.missing.length + ' characters';
+
+                    // Show/hide "Not in Deck" section based on whether we have data
+                    if (charData.notInDeck && charData.notInDeck.length > 0) {
+                        notInDeckChars.textContent = charData.notInDeck.join(' ');
+                        notInDeckCount.textContent = charData.notInDeck.length + ' characters';
+                        notInDeckSection.style.display = 'block';
+                    } else {
+                        notInDeckSection.style.display = 'none';
+                    }
 
                     modal.style.display = 'block';
                 }
@@ -609,6 +881,11 @@ class HanziStatsDialog(QDialog):
                             <h3>✗ Not Yet Reviewed</h3>
                             <div class="char-list" id="missingChars"></div>
                             <div class="char-count" id="missingCount"></div>
+                        </div>
+                        <div class="char-section not-in-deck-section" id="notInDeckSection">
+                            <h3>⊘ Not in Deck</h3>
+                            <div class="char-list" id="notInDeckChars"></div>
+                            <div class="char-count" id="notInDeckCount"></div>
                         </div>
                     </div>
                 </div>

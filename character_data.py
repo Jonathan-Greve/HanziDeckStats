@@ -135,6 +135,52 @@ class CharacterData:
         else:
             return ""
 
+    def get_official_hsk_2012_characters(self) -> Dict[str, Set[str]]:
+        """
+        Get all official HSK 2.0 (2012) characters organized by level.
+
+        Returns:
+            Dict mapping level names to sets of characters.
+        """
+        result = {
+            'Level 1': set(),
+            'Level 2': set(),
+            'Level 3': set(),
+            'Level 4': set(),
+            'Level 5': set(),
+            'Level 6': set(),
+        }
+
+        for char, level in self.hsk_2012_map.items():
+            result[f'Level {level}'].add(char)
+
+        return result
+
+    def get_official_hsk_2021_characters(self) -> Dict[str, Set[str]]:
+        """
+        Get all official HSK 3.0 (2021) characters organized by band.
+
+        Returns:
+            Dict mapping band names to sets of characters.
+        """
+        result = {
+            'Band 1': set(),
+            'Band 2': set(),
+            'Band 3': set(),
+            'Band 4': set(),
+            'Band 5': set(),
+            'Band 6': set(),
+            'Bands 7-9': set(),
+        }
+
+        for char, level in self.hsk_2021_map.items():
+            if level >= 7:
+                result['Bands 7-9'].add(char)
+            else:
+                result[f'Band {level}'].add(char)
+
+        return result
+
     def categorize_characters(self, characters: Set[str]) -> Dict[str, Dict[str, Set[str]]]:
         """
         Categorize a set of characters into HSK levels and frequency bands.
