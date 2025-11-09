@@ -12,10 +12,12 @@ class CharacterData:
     """Loads and manages character categorization data."""
 
     def __init__(self):
+        self.hsk_2012_map: Dict[str, int] = {}  # char -> level (1-6)
         self.hsk_2021_map: Dict[str, int] = {}  # char -> level (1-7, where 7 = bands 7-9)
         self.frequency_rank_map: Dict[str, int] = {}  # char -> frequency rank
 
         # Load data
+        self._load_hsk_2012()
         self._load_hsk_2021()
         self._load_frequency()
 
@@ -23,6 +25,29 @@ class CharacterData:
         """Get path to data file in datasets directory."""
         addon_dir = os.path.dirname(__file__)
         return os.path.join(addon_dir, 'datasets', filename)
+
+    def _load_hsk_2012(self):
+        """Load HSK 2.0 (2012) character data from hsk2012-chars.csv"""
+        csv_path = self._get_data_path('hsk2012-chars.csv')
+
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    char = row['Hanzi']
+                    level_str = row['Level']
+
+                    try:
+                        level = int(level_str)
+                    except ValueError:
+                        continue
+
+                    # Store simplified character
+                    self.hsk_2012_map[char] = level
+        except FileNotFoundError:
+            print(f"Warning: HSK 2012 data file not found: {csv_path}")
+        except Exception as e:
+            print(f"Error loading HSK 2012 data: {e}")
 
     def _load_hsk_2021(self):
         """Load HSK 3.0 (2021) character data from hsk30-chars.csv"""
@@ -82,6 +107,10 @@ class CharacterData:
         except Exception as e:
             print(f"Error loading frequency data: {e}")
 
+    def get_hsk_2012_level(self, char: str) -> int:
+        """Get HSK 2012 level (1-6) for a character, or 0 if not in HSK."""
+        return self.hsk_2012_map.get(char, 0)
+
     def get_hsk_2021_level(self, char: str) -> int:
         """Get HSK 2021 level (1-7, where 7=bands 7-9) for a character, or 0 if not in HSK."""
         return self.hsk_2021_map.get(char, 0)
@@ -111,10 +140,18 @@ class CharacterData:
         Categorize a set of characters into HSK levels and frequency bands.
 
         Returns:
-            Dict with keys 'hsk_2021', 'frequency', each containing
+            Dict with keys 'hsk_2012', 'hsk_2021', 'frequency', each containing
             a dict mapping category names to sets of characters.
         """
         result = {
+            'hsk_2012': {
+                'Level 1': set(),
+                'Level 2': set(),
+                'Level 3': set(),
+                'Level 4': set(),
+                'Level 5': set(),
+                'Level 6': set(),
+            },
             'hsk_2021': {
                 'Band 1': set(),
                 'Band 2': set(),
@@ -133,6 +170,11 @@ class CharacterData:
         }
 
         for char in characters:
+            # HSK 2012
+            hsk_2012_level = self.get_hsk_2012_level(char)
+            if hsk_2012_level > 0:
+                result['hsk_2012'][f'Level {hsk_2012_level}'].add(char)
+
             # HSK 2021
             hsk_2021_level = self.get_hsk_2021_level(char)
             if hsk_2021_level > 0:

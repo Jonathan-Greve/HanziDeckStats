@@ -65,6 +65,7 @@ copy /y "manifest.json" "%TARGET_FOLDER%\" >nul
 REM Copy datasets folder
 echo Copying datasets...
 mkdir "%TARGET_FOLDER%\datasets"
+copy /y "datasets\hsk2012-chars.csv" "%TARGET_FOLDER%\datasets\" >nul
 copy /y "datasets\hsk30-chars.csv" "%TARGET_FOLDER%\datasets\" >nul
 copy /y "datasets\mega_hanzi_compilation.csv" "%TARGET_FOLDER%\datasets\" >nul
 

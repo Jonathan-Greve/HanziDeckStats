@@ -271,8 +271,13 @@ class HanziStatsDialog(QDialog):
 
         categories_to_show = self.config.get('categoriesToShow', [])
 
+        # HSK 2012 (2.0)
+        if any('HSK 2.0' in cat or 'Level' in cat for cat in categories_to_show):
+            html += "<h4>HSK 2.0 (2012)</h4>"
+            html += self._generate_category_table(stats, 'hsk_2012')
+
         # HSK 2021 (3.0)
-        if any('HSK' in cat for cat in categories_to_show):
+        if any('HSK 3.0' in cat or 'Band' in cat for cat in categories_to_show):
             html += "<h4>HSK 3.0 (2021)</h4>"
             html += self._generate_category_table(stats, 'hsk_2021')
 
